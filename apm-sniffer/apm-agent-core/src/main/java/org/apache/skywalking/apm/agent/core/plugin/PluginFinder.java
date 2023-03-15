@@ -40,12 +40,18 @@ import static net.bytebuddy.matcher.ElementMatchers.not;
  * AbstractClassEnhancePluginDefine} list.
  */
 public class PluginFinder {
-    private final Map<String, LinkedList<AbstractClassEnhancePluginDefine>> nameMatchDefine = new HashMap<String, LinkedList<AbstractClassEnhancePluginDefine>>();
+    private final Map<String, LinkedList<AbstractClassEnhancePluginDefine>> nameMatchDefine = new HashMap<String,
+            LinkedList<AbstractClassEnhancePluginDefine>>(); // 直接通过名称进行匹配
     private final List<AbstractClassEnhancePluginDefine> signatureMatchDefine = new ArrayList<AbstractClassEnhancePluginDefine>();
     private final List<AbstractClassEnhancePluginDefine> bootstrapClassMatchDefine = new ArrayList<AbstractClassEnhancePluginDefine>();
     private static boolean IS_PLUGIN_INIT_COMPLETED = false;
 
+    /**
+     * 所有插件交给PluginFinder进行管理分类
+     * @param plugins
+     */
     public PluginFinder(List<AbstractClassEnhancePluginDefine> plugins) {
+        // 所有插件分成nameMatchDefine、signatureMatchDefine和bootstrapClassMatchDefine
         for (AbstractClassEnhancePluginDefine plugin : plugins) {
             ClassMatch match = plugin.enhanceClass();
 
@@ -71,6 +77,10 @@ public class PluginFinder {
         }
     }
 
+    /**
+     * typeDescription 是对一个类型的完整描述，其中包含了这个类的全类名
+     * 和buildMatch方法类似，buildMatch通过bytebuddy来进行，find通过PluginFinder自身来进行
+     */
     public List<AbstractClassEnhancePluginDefine> find(TypeDescription typeDescription) {
         List<AbstractClassEnhancePluginDefine> matchedPlugins = new LinkedList<AbstractClassEnhancePluginDefine>();
         String typeName = typeDescription.getTypeName();
@@ -88,6 +98,9 @@ public class PluginFinder {
         return matchedPlugins;
     }
 
+    /**
+     * 把所有需要增强的类构造为ElementMatcher
+     */
     public ElementMatcher<? super TypeDescription> buildMatch() {
         ElementMatcher.Junction judge = new AbstractJunction<NamedElement>() {
             @Override
@@ -97,6 +110,7 @@ public class PluginFinder {
         };
         judge = judge.and(not(isInterface()));
         for (AbstractClassEnhancePluginDefine define : signatureMatchDefine) {
+            // 通过不同定义的match来进行匹配
             ClassMatch match = define.enhanceClass();
             if (match instanceof IndirectMatch) {
                 judge = judge.or(((IndirectMatch) match).buildJunction());

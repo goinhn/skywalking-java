@@ -65,6 +65,7 @@ public class SkyWalkingAgent {
     public static void premain(String agentArgs, Instrumentation instrumentation) throws PluginException {
         final PluginFinder pluginFinder;
         try {
+            // 1.配置加载
             SnifferConfigInitializer.initializeCoreConfig(agentArgs);
         } catch (Exception e) {
             // try to resolve a new logger, and use the new logger to write the error log here
@@ -73,15 +74,18 @@ public class SkyWalkingAgent {
             return;
         } finally {
             // refresh logger again after initialization finishes
+            // 配置文件加载之后重新加载新的logger
             LOGGER = LogManager.getLogger(SkyWalkingAgent.class);
         }
 
+        // 开关控制是否启动
         if (!Config.Agent.ENABLE) {
             LOGGER.warn("SkyWalking agent is disabled.");
             return;
         }
 
         try {
+            // 2.加载插件
             pluginFinder = new PluginFinder(new PluginBootstrap().loadPlugins());
         } catch (AgentPackageNotFoundException ape) {
             LOGGER.error(ape, "Locate agent.jar failure. Shutting down.");
@@ -128,10 +132,13 @@ public class SkyWalkingAgent {
             }
         }
 
+        // 需要通过字节增强的类
         agentBuilder.type(pluginFinder.buildMatch())
+                // 定义字节码更改逻辑
                     .transform(new Transformer(pluginFinder))
                     .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
                     .with(new RedefinitionListener())
+                // 打印一些日志信息
                     .with(new Listener())
                     .installOn(instrumentation);
 
@@ -161,6 +168,7 @@ public class SkyWalkingAgent {
                                                 final JavaModule javaModule,
                                                 final ProtectionDomain protectionDomain) {
             LoadedLibraryCollector.registerURLClassLoader(classLoader);
+            // 拿到所有可以被应用于当前被拦截的这个类的插件
             List<AbstractClassEnhancePluginDefine> pluginDefines = pluginFinder.find(typeDescription);
             if (pluginDefines.size() > 0) {
                 DynamicType.Builder<?> newBuilder = builder;
@@ -169,6 +177,8 @@ public class SkyWalkingAgent {
                     DynamicType.Builder<?> possibleNewBuilder = define.define(
                         typeDescription, newBuilder, classLoader, context);
                     if (possibleNewBuilder != null) {
+                        // 多个plugin对同一个plugin进行增强，会进行叠加
+                        // 后一个插件是基于前一个插件已经修改了的字节码再次进行修改
                         newBuilder = possibleNewBuilder;
                     }
                 }

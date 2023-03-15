@@ -39,6 +39,7 @@ public class PluginBootstrap {
      * @return plugin definition list.
      */
     public List<AbstractClassEnhancePluginDefine> loadPlugins() throws AgentPackageNotFoundException {
+        // 初始化 AgentClassLoader，用来加载插件
         AgentClassLoader.initDefaultLoader();
 
         PluginResourcesResolver resolver = new PluginResourcesResolver();
@@ -63,6 +64,7 @@ public class PluginBootstrap {
         for (PluginDefine pluginDefine : pluginClassList) {
             try {
                 LOGGER.debug("loading plugin class {}.", pluginDefine.getDefineClass());
+                // 将def配置文件中的value示例化为AbstractClassEnhancePluginDefine
                 AbstractClassEnhancePluginDefine plugin = (AbstractClassEnhancePluginDefine) Class.forName(pluginDefine.getDefineClass(), true, AgentClassLoader
                     .getDefault()).newInstance();
                 plugins.add(plugin);
@@ -71,6 +73,7 @@ public class PluginBootstrap {
             }
         }
 
+        // 动态加载所有实现了 InstrumentationLoader 的插件，利用Java SPI机制加载
         plugins.addAll(DynamicPluginLoader.INSTANCE.load(AgentClassLoader.getDefault()));
 
         return plugins;

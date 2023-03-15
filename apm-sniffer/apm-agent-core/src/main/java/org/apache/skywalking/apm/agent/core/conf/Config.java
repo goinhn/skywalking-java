@@ -30,6 +30,7 @@ import org.apache.skywalking.apm.util.Length;
 
 /**
  * This is the core config in sniffer agent.
+ * 默认的配置项
  */
 public class Config {
 
@@ -377,6 +378,7 @@ public class Config {
 
     public static class Plugin {
         /**
+         * peer最大描述限制长度
          * Control the length of the peer field.
          */
         public static int PEER_MAX_LENGTH = 200;
@@ -387,6 +389,7 @@ public class Config {
         public static String EXCLUDE_PLUGINS = "";
 
         /**
+         * 加载定义目录下的插件
          * Mount the folders of the plugins. The folder path is relative to agent.jar.
          */
         public static List<String> MOUNT = Arrays.asList("plugins", "activations");

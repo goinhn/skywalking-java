@@ -55,6 +55,7 @@ public class AgentClassLoader extends ClassLoader {
 
     private static final ILog LOGGER = LogManager.getLogger(AgentClassLoader.class);
     /**
+     * 初始化后默认包含待加载插件的文件
      * The default class loader for the agent.
      */
     private static AgentClassLoader DEFAULT_LOADER;
@@ -69,6 +70,7 @@ public class AgentClassLoader extends ClassLoader {
 
     /**
      * Init the default class loader.
+     * 双重检查方法单例模式构造AgentClassLoader，通过使用不同的类加载器将Plugin和主程序分开
      *
      * @throws AgentPackageNotFoundException if agent package is not found.
      */
@@ -85,7 +87,9 @@ public class AgentClassLoader extends ClassLoader {
     public AgentClassLoader(ClassLoader parent) throws AgentPackageNotFoundException {
         super(parent);
         File agentDictionary = AgentPackagePath.getPath();
+        // 按照文件放置顺序进行加载
         classpath = new LinkedList<>();
+        // 将需要加载的 jar folder 加入到 classpath 中
         Config.Plugin.MOUNT.forEach(mountFolder -> classpath.add(new File(agentDictionary, mountFolder)));
     }
 

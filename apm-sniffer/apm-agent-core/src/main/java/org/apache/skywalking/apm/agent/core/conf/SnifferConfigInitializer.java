@@ -50,9 +50,9 @@ import static org.apache.skywalking.apm.agent.core.conf.Constants.SERVICE_NAME_P
  */
 public class SnifferConfigInitializer {
     private static ILog LOGGER = LogManager.getLogger(SnifferConfigInitializer.class);
-    private static final String SPECIFIED_CONFIG_PATH = "skywalking_config";
-    private static final String DEFAULT_CONFIG_FILE_NAME = "/config/agent.config";
-    private static final String ENV_KEY_PREFIX = "skywalking.";
+    private static final String SPECIFIED_CONFIG_PATH = "skywalking_config"; // 环境变量设置配置文件路径
+    private static final String DEFAULT_CONFIG_FILE_NAME = "/config/agent.config"; // 默认加载路径
+    private static final String ENV_KEY_PREFIX = "skywalking."; // 默认匹配配置项前缀
     private static Properties AGENT_SETTINGS;
     private static boolean IS_INIT_COMPLETED = false;
 
@@ -69,10 +69,12 @@ public class SnifferConfigInitializer {
      */
     public static void initializeCoreConfig(String agentOptions) {
         AGENT_SETTINGS = new Properties();
+        // 1.读取配置文件
         try (final InputStreamReader configFileStream = loadConfig()) {
             AGENT_SETTINGS.load(configFileStream);
             for (String key : AGENT_SETTINGS.stringPropertyNames()) {
                 String value = (String) AGENT_SETTINGS.get(key);
+                // 处理占位符
                 AGENT_SETTINGS.put(key, PropertyPlaceholderHelper.INSTANCE.replacePlaceholders(value, AGENT_SETTINGS));
             }
 
@@ -81,6 +83,7 @@ public class SnifferConfigInitializer {
         }
 
         try {
+            // 2.从系统环境变量覆盖
             overrideConfigBySystemProp();
         } catch (Exception e) {
             LOGGER.error(e, "Failed to read the system properties.");
@@ -92,19 +95,23 @@ public class SnifferConfigInitializer {
                 agentOptions = agentOptions.trim();
                 LOGGER.info("Agent options is {}.", agentOptions);
 
+                // 3.从命令行参数覆盖
                 overrideConfigByAgentOptions(agentOptions);
             } catch (Exception e) {
                 LOGGER.error(e, "Failed to parse the agent options, val is {}.", agentOptions);
             }
         }
 
+        // 4.覆盖全局config类中的静态变量
         initializeConfig(Config.class);
         // reconfigure logger after config initialization
         configureLogger();
+        // 初始化当前系统内使用的log
         LOGGER = LogManager.getLogger(SnifferConfigInitializer.class);
 
         setAgentVersion();
 
+        // SERVICE_NAME一定需要配置
         if (StringUtil.isEmpty(Config.Agent.SERVICE_NAME)) {
             throw new ExceptionInInitializerError("`agent.service_name` is missing.");
         } else {
@@ -117,6 +124,7 @@ public class SnifferConfigInitializer {
                 );
             }
         }
+        // BACKEND_SERVICE一定需要配置
         if (StringUtil.isEmpty(Config.Collector.BACKEND_SERVICE)) {
             throw new ExceptionInInitializerError("`collector.backend_service` is missing.");
         }
@@ -128,6 +136,7 @@ public class SnifferConfigInitializer {
             Config.Plugin.PEER_MAX_LENGTH = 200;
         }
 
+        // 将加载状态标记为完成
         IS_INIT_COMPLETED = true;
     }
 
@@ -152,6 +161,9 @@ public class SnifferConfigInitializer {
         }
     }
 
+    /**
+     * 命令行参数解析覆盖
+     */
     private static void overrideConfigByAgentOptions(String agentOptions) throws IllegalArgumentException {
         for (List<String> terms : parseAgentOptions(agentOptions)) {
             if (terms.size() != 2) {
@@ -202,6 +214,7 @@ public class SnifferConfigInitializer {
         Properties systemProperties = System.getProperties();
         for (final Map.Entry<Object, Object> prop : systemProperties.entrySet()) {
             String key = prop.getKey().toString();
+            // 加载指定前缀的系统环境变量进行覆盖原有配置
             if (key.startsWith(ENV_KEY_PREFIX)) {
                 String realKey = key.substring(ENV_KEY_PREFIX.length());
                 AGENT_SETTINGS.put(realKey, prop.getValue());
@@ -210,6 +223,7 @@ public class SnifferConfigInitializer {
     }
 
     /**
+     * 从Jar包的META-INF/MANIFEST.MF获取当前的skywalking版本信息
      * Set agent version(Described in MANIFEST.MF)
      */
     private static void setAgentVersion() {
@@ -244,6 +258,7 @@ public class SnifferConfigInitializer {
      */
     private static InputStreamReader loadConfig() throws AgentPackageNotFoundException, ConfigNotFoundException {
         String specifiedConfigPath = System.getProperty(SPECIFIED_CONFIG_PATH);
+        // 存在配置的配置文件路径则通过配置文件路径加载，否则使用默认路径加载
         File configFile = StringUtil.isEmpty(specifiedConfigPath) ? new File(
             AgentPackagePath.getPath(), DEFAULT_CONFIG_FILE_NAME) : new File(specifiedConfigPath);
 
@@ -259,6 +274,9 @@ public class SnifferConfigInitializer {
         throw new ConfigNotFoundException("Failed to load agent.config.");
     }
 
+    /**
+     * 初始化log，支持JsonLogger或PatternLogger
+     */
     static void configureLogger() {
         switch (Config.Logging.RESOLVER) {
             case JSON:

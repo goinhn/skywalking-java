@@ -49,6 +49,7 @@ public abstract class AbstractClassEnhancePluginDefine {
     public static final String CONTEXT_ATTR_NAME = "_$EnhancedClassField_ws";
 
     /**
+     * 判断当前plugin是否生效，并且将 plugin 构建成 ByteBuddy 所需要的 DynamicType.Builder 对象
      * Main entrance of enhancing the class.
      *
      * @param typeDescription target class description.
@@ -60,6 +61,7 @@ public abstract class AbstractClassEnhancePluginDefine {
     public DynamicType.Builder<?> define(TypeDescription typeDescription, DynamicType.Builder<?> builder,
         ClassLoader classLoader, EnhanceContext context) throws PluginException {
         String interceptorDefineClassName = this.getClass().getName();
+        // 1.拿到被拦截到这个类的全类名用来打印log
         String transformClassName = typeDescription.getTypeName();
         if (StringUtil.isEmpty(transformClassName)) {
             LOGGER.warn("classname of being intercepted is not defined by {}.", interceptorDefineClassName);
@@ -71,6 +73,8 @@ public abstract class AbstractClassEnhancePluginDefine {
         /**
          * find witness classes for enhance class
          */
+        // 2.判断Plugin是否生效
+        // witness机制
         String[] witnessClasses = witnessClasses();
         if (witnessClasses != null) {
             for (String witnessClass : witnessClasses) {
@@ -93,6 +97,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         /**
          * find origin class source code for interceptor
          */
+        // 3.执行拦截器注入，并返回DynamicType.Builder
         DynamicType.Builder<?> newClassBuilder = this.enhance(typeDescription, builder, classLoader, context);
 
         context.initializationStageCompleted();
